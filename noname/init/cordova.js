@@ -4,7 +4,6 @@ import { Library as lib } from '../library/index.js';
 import { Game as game } from '../game/index.js';
 import { status as _status } from '../status/index.js';
 import { UI as ui } from '../ui/index.js';
-import { nonameInitialized } from '../util/index.js';
 
 export async function cordovaReady() {
 	lib.path = (await import('../library/path.js')).default;
@@ -63,7 +62,7 @@ export async function cordovaReady() {
 			url = get.url(dev) + url;
 		}
 		var fileTransfer = new FileTransfer();
-		folder = nonameInitialized + folder;
+		folder = lib.assetURL + folder;
 		if (onprogress) {
 			fileTransfer.onprogress = function (progressEvent) {
 				onprogress(progressEvent.loaded, progressEvent.total);
@@ -80,7 +79,7 @@ export async function cordovaReady() {
 		}, onerror);
 	};
 	game.readFile = function (filename, callback, onerror) {
-		window.resolveLocalFileSystemURL(nonameInitialized, function (entry) {
+		window.resolveLocalFileSystemURL(lib.assetURL, function (entry) {
 			entry.getFile(filename, {}, function (fileEntry) {
 				fileEntry.file(function (fileToLoad) {
 					var fileReader = new FileReader();
@@ -93,7 +92,7 @@ export async function cordovaReady() {
 		}, onerror);
 	};
 	game.readFileAsText = function (filename, callback, onerror) {
-		window.resolveLocalFileSystemURL(nonameInitialized, function (entry) {
+		window.resolveLocalFileSystemURL(lib.assetURL, function (entry) {
 			entry.getFile(filename, {}, function (fileEntry) {
 				fileEntry.file(function (fileToLoad) {
 					var fileReader = new FileReader();
@@ -115,7 +114,7 @@ export async function cordovaReady() {
 				fileReader.readAsArrayBuffer(data, "UTF-8");
 			}
 			else {
-				window.resolveLocalFileSystemURL(nonameInitialized + path, function (entry) {
+				window.resolveLocalFileSystemURL(lib.assetURL + path, function (entry) {
 					entry.getFile(name, { create: true }, function (fileEntry) {
 						fileEntry.createWriter(function (fileWriter) {
 							fileWriter.onwriteend = callback;
@@ -127,7 +126,7 @@ export async function cordovaReady() {
 		});
 	};
 	game.removeFile = function (dir, callback) {
-		window.resolveLocalFileSystemURL(nonameInitialized, function (entry) {
+		window.resolveLocalFileSystemURL(lib.assetURL, function (entry) {
 			entry.getFile(dir, {}, function (fileEntry) {
 				fileEntry.remove();
 				if (callback) callback();
@@ -136,7 +135,7 @@ export async function cordovaReady() {
 	};
 	game.getFileList = (dir, success, failure) => {
 		var files = [], folders = [];
-		window.resolveLocalFileSystemURL(nonameInitialized + dir, entry => {
+		window.resolveLocalFileSystemURL(lib.assetURL + dir, entry => {
 			var dirReader = entry.createReader();
 			var entries = [];
 			var readEntries = () => {
@@ -175,7 +174,7 @@ export async function cordovaReady() {
 				create: true
 			}, resolve))).then(directoryEntry => access(directoryEntry, directory, createDirectory));
 		};
-		return new Promise((resolve, reject) => window.resolveLocalFileSystemURL(nonameInitialized, rootEntry => {
+		return new Promise((resolve, reject) => window.resolveLocalFileSystemURL(lib.assetURL, rootEntry => {
 			const createDirectory = () => {
 				if (directoryList.length) access(rootEntry, directoryList.pop().split('/').reverse(), createDirectory);
 				if (typeof callback == 'function') callback();

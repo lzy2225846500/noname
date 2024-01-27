@@ -1,4 +1,4 @@
-import { game } from '../noname.js';
+'use strict';
 game.import('character',function(lib,game,ui,get,ai,_status){
 	return {
 		name:'yijiang',
@@ -1182,7 +1182,7 @@ game.import('character',function(lib,game,ui,get,ai,_status){
 							getv=(name,player)=>{
 								let v=trigger.getTempCache('sangu',player.id+name);
 								if(typeof v==='number') return v;
-								v=player.getUseValue({name:name,storage:{sangu:true}});
+								v=player.getUseValue({name:name,storage:{sangu:true}},arg);
 								trigger.putTempCache('sangu',player.id+name,v);
 								return v;
 							};
@@ -5958,17 +5958,6 @@ game.import('character',function(lib,game,ui,get,ai,_status){
 					}
 				},
 				intro:{content:'【矫诏】加成等级：Lv.#'},
-				ai:{
-					maixie:true,
-					effect:{
-						target:(card,player,target)=>{
-							if(!get.tag(card,'damage')) return;
-							if(target.hp+target.hujia<2||player.hasSkillTag('jueqing',false,target)) return 1.8;
-							if(target.countMark('xindanxin')>1) return [1,1];
-							return [1,0.8*target.hp-0.5];
-						}
-					}
-				}
 			},
 			danxin:{
 				trigger:{player:'damageEnd'},
@@ -6009,7 +5998,7 @@ game.import('character',function(lib,game,ui,get,ai,_status){
 					effect:{
 						target:(card,player,target)=>{
 							if(!get.tag(card,'damage')) return;
-							if(target.hp<2||player.hasSkillTag('jueqing',false,target)) return 1.5;
+							if(target.hp<2||player.hasSkillTag('jueqing',false,target)) return -1.5;
 							return [1,1];
 						}
 					}
@@ -8078,41 +8067,60 @@ game.import('character',function(lib,game,ui,get,ai,_status){
 				audio:2,
 				trigger:{player:'phaseJieshuBegin'},
 				direct:true,
-				async content(event,trigger,player){
+				content:function(){
+					'step 0'
 					var num=player.hp;
 					if(!player.hasSkill('yanzhu')){
 						num=player.maxHp;
 					}
-					const {result:{targets,bool}}=
-					await player.chooseTarget([1,num],get.prompt2('xingxue')).set('ai',function(target){
+					player.chooseTarget([1,num],get.prompt2('xingxue')).set('ai',function(target){
 						var att=get.attitude(_status.event.player,target);
 						if(target.countCards('he')) return att;
 						return att/10;
 					});
-					if(bool){
-						player.logSkill('xingxue',targets);
-						const chooseToPutCard = async function(target){
-							await target.draw();
-							if(target.countCards('he')){
-								const {result:{cards,bool}} =
-								await target.chooseCard('选择一张牌置于牌堆顶','he',true);
-								if(bool){
-									await target.lose(cards,ui.cardPile,'insert');
-								}
-								game.broadcastAll(function(player){
-									var cardx=ui.create.card();
-									cardx.classList.add('infohidden');
-									cardx.classList.add('infoflip');
-									player.$throw(cardx,1000,'nobroadcast');
-								},target);
-								if(player == game.me){
-									await game.asyncDelay(0.5);
-								}
-							}
-						};
-						await game.doAsyncInOrder(targets,chooseToPutCard);
+					'step 1'
+					if(result.bool){
+						player.logSkill('xingxue',result.targets);
+						event.targets=result.targets;
+						event.targets.sort(lib.sort.seat);
 					}
-				},
+					else{
+						event.finish();
+					}
+					'step 2'
+					if(event.targets.length){
+						var target=event.targets.shift();
+						target.draw();
+						event.current=target;
+					}
+					else{
+						event.finish();
+					}
+					'step 3'
+					if(event.current&&event.current.countCards('he')){
+						event.current.chooseCard('选择一张牌置于牌堆顶','he',true);
+					}
+					else{
+						event.goto(2);
+					}
+					'step 4'
+					if(result&&result.cards){
+						event.card=result.cards[0];
+						event.current.lose(result.cards,ui.cardPile,'insert');
+						game.broadcastAll(function(player){
+							var cardx=ui.create.card();
+							cardx.classList.add('infohidden');
+							cardx.classList.add('infoflip');
+							player.$throw(cardx,1000,'nobroadcast');
+						},event.current);
+					}
+					else{
+						event.card=null;
+					}
+					'step 5'
+					if(event.current==game.me) game.delay(0.5);
+					event.goto(2);
+				}
 			},
 			yanzhu:{
 				audio:2,
